@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golf Shot Dispersion Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+–fairway: #2d5a1b;
+–rough: #1e3d11;
+–green: #3a7d2c;
+–sand: #c8a96e;
+–sky: #0d1f0d;
+–cream: #f5f0e8;
+–gold: #c9a84c;
+–red: #d94f3a;
+–white: #fefefe;
+–muted: #8a9e82;
+–card: #162a12;
+–border: #2e4a28;
+–shot-color: #e8c84a;
+}
+
+html, body {
+height: 100%;
+background: var(–sky);
+color: var(–cream);
+font-family: ‘DM Mono’, monospace;
+overflow-x: hidden;
+}
+
+.app {
+display: grid;
+grid-template-columns: 340px 1fr;
+grid-template-rows: 64px 1fr;
+height: 100vh;
+gap: 0;
+}
+
+/* HEADER */
+header {
+grid-column: 1 / -1;
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 0 28px;
+border-bottom: 1px solid var(–border);
+background: rgba(13,31,13,0.95);
+backdrop-filter: blur(8px);
+position: sticky;
+top: 0;
+z-index: 10;
+}
+
+.logo {
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+.logo-icon {
+width: 32px;
+height: 32px;
+background: var(–gold);
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 14px;
+}
+
+.logo h1 {
+font-family: ‘DM Serif Display’, serif;
+font-size: 18px;
+letter-spacing: 0.02em;
+color: var(–cream);
+}
+
+.logo span {
+font-size: 10px;
+color: var(–muted);
+letter-spacing: 0.15em;
+text-transform: uppercase;
+display: block;
+margin-top: -2px;
+}
+
+.header-stats {
+display: flex;
+gap: 32px;
+}
+
+.stat-pill {
+text-align: center;
+}
+
+.stat-pill .val {
+font-size: 20px;
+font-weight: 500;
+color: var(–gold);
+display: block;
+}
+
+.stat-pill .lbl {
+font-size: 9px;
+color: var(–muted);
+letter-spacing: 0.12em;
+text-transform: uppercase;
+}
+
+/* SIDEBAR */
+.sidebar {
+background: var(–card);
+border-right: 1px solid var(–border);
+padding: 24px 20px;
+overflow-y: auto;
+display: flex;
+flex-direction: column;
+gap: 20px;
+}
+
+.section-label {
+font-size: 9px;
+letter-spacing: 0.2em;
+text-transform: uppercase;
+color: var(–muted);
+margin-bottom: 10px;
+}
+
+.input-group {
+display: flex;
+flex-direction: column;
+gap: 6px;
+}
+
+.input-group label {
+font-size: 10px;
+letter-spacing: 0.12em;
+text-transform: uppercase;
+color: var(–muted);
+}
+
+.input-group input, .input-group select {
+background: rgba(255,255,255,0.04);
+border: 1px solid var(–border);
+color: var(–cream);
+font-family: ‘DM Mono’, monospace;
+font-size: 13px;
+padding: 9px 12px;
+border-radius: 6px;
+outline: none;
+transition: border-color 0.2s;
+}
+
+.input-group input:focus, .input-group select:focus {
+border-color: var(–gold);
+}
+
+.input-group select option {
+background: #1a2e15;
+}
+
+.miss-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 6px;
+}
+
+.miss-btn {
+background: rgba(255,255,255,0.03);
+border: 1px solid var(–border);
+color: var(–muted);
+font-family: ‘DM Mono’, monospace;
+font-size: 10px;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+padding: 8px 4px;
+border-radius: 6px;
+cursor: pointer;
+transition: all 0.15s;
+text-align: center;
+}
+
+.miss-btn:hover { border-color: var(–gold); color: var(–cream); }
+.miss-btn.active { background: var(–gold); border-color: var(–gold); color: #0d1f0d; font-weight: 500; }
+
+.add-btn {
+background: var(–gold);
+color: #0d1f0d;
+border: none;
+font-family: ‘DM Serif Display’, serif;
+font-size: 14px;
+padding: 13px;
+border-radius: 8px;
+cursor: pointer;
+transition: all 0.2s;
+letter-spacing: 0.05em;
+font-weight: 400;
+}
+
+.add-btn:hover { background: #e0bc6a; transform: translateY(-1px); }
+.add-btn:active { transform: translateY(0); }
+
+.clear-btn {
+background: transparent;
+color: var(–muted);
+border: 1px solid var(–border);
+font-family: ‘DM Mono’, monospace;
+font-size: 10px;
+letter-spacing: 0.12em;
+text-transform: uppercase;
+padding: 9px;
+border-radius: 6px;
+cursor: pointer;
+transition: all 0.15s;
+}
+
+.clear-btn:hover { border-color: var(–red); color: var(–red); }
+
+/* SHOT LOG */
+.shot-log {
+flex: 1;
+overflow-y: auto;
+}
+
+.shot-item {
+display: flex;
+align-items: center;
+gap: 10px;
+padding: 8px 10px;
+border-radius: 6px;
+margin-bottom: 4px;
+background: rgba(255,255,255,0.02);
+border: 1px solid transparent;
+cursor: pointer;
+transition: all 0.15s;
+animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+from { opacity: 0; transform: translateX(-10px); }
+to { opacity: 1; transform: translateX(0); }
+}
+
+.shot-item:hover { border-color: var(–border); background: rgba(255,255,255,0.04); }
+
+.shot-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+background: var(–shot-color);
+flex-shrink: 0;
+}
+
+.shot-info { flex: 1; }
+
+.shot-club {
+font-size: 11px;
+color: var(–cream);
+font-weight: 500;
+}
+
+.shot-detail {
+font-size: 10px;
+color: var(–muted);
+margin-top: 1px;
+}
+
+.shot-remove {
+background: none;
+border: none;
+color: var(–border);
+cursor: pointer;
+font-size: 14px;
+line-height: 1;
+padding: 2px 4px;
+transition: color 0.15s;
+}
+
+.shot-remove:hover { color: var(–red); }
+
+/* MAIN CANVAS AREA */
+.canvas-area {
+position: relative;
+background: var(–rough);
+overflow: hidden;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+/* Grass texture overlay */
+.canvas-area::before {
+content: ‘’;
+position: absolute;
+inset: 0;
+background-image:
+repeating-linear-gradient(
+90deg,
+transparent,
+transparent 3px,
+rgba(255,255,255,0.008) 3px,
+rgba(255,255,255,0.008) 4px
+),
+repeating-linear-gradient(
+0deg,
+transparent,
+transparent 3px,
+rgba(255,255,255,0.008) 3px,
+rgba(255,255,255,0.008) 4px
+);
+pointer-events: none;
+}
+
+#dispersionCanvas {
+position: relative;
+z-index: 2;
+cursor: crosshair;
+}
+
+/* STATS OVERLAY */
+.stats-overlay {
+position: absolute;
+top: 20px;
+right: 20px;
+z-index: 5;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.stat-card {
+background: rgba(13,31,13,0.88);
+border: 1px solid var(–border);
+border-radius: 8px;
+padding: 10px 14px;
+backdrop-filter: blur(8px);
+min-width: 130px;
+}
+
+.stat-card .label {
+font-size: 8px;
+letter-spacing: 0.18em;
+text-transform: uppercase;
+color: var(–muted);
+margin-bottom: 3px;
+}
+
+.stat-card .value {
+font-family: ‘DM Serif Display’, serif;
+font-size: 22px;
+color: var(–gold);
+}
+
+.stat-card .unit {
+font-size: 10px;
+color: var(–muted);
+margin-left: 3px;
+}
+
+/* CLUB FILTER */
+.filter-bar {
+position: absolute;
+bottom: 20px;
+left: 50%;
+transform: translateX(-50%);
+z-index: 5;
+display: flex;
+gap: 6px;
+background: rgba(13,31,13,0.88);
+border: 1px solid var(–border);
+border-radius: 50px;
+padding: 6px 10px;
+backdrop-filter: blur(8px);
+}
+
+.filter-chip {
+font-family: ‘DM Mono’, monospace;
+font-size: 10px;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+padding: 5px 12px;
+border-radius: 50px;
+border: 1px solid transparent;
+cursor: pointer;
+transition: all 0.15s;
+color: var(–muted);
+background: transparent;
+}
+
+.filter-chip:hover { color: var(–cream); }
+.filter-chip.active { background: var(–gold); color: #0d1f0d; border-color: var(–gold); }
+
+/* EMPTY STATE */
+.empty-state {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+text-align: center;
+z-index: 3;
+pointer-events: none;
+}
+
+.empty-icon {
+font-size: 48px;
+margin-bottom: 12px;
+opacity: 0.3;
+}
+
+.empty-state p {
+font-size: 11px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(–muted);
+opacity: 0.6;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(–border); border-radius: 2px; }
+</style>
+
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⛳</div>
+      <div>
+        <h1>Dispersion</h1>
+        <span>Shot Pattern Tracker</span>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span class="val" id="hShotCount">0</span>
+        <span class="lbl">Shots</span>
+      </div>
+      <div class="stat-pill">
+        <span class="val" id="hAvgDist">—</span>
+        <span class="lbl">Avg Yds</span>
+      </div>
+      <div class="stat-pill">
+        <span class="val" id="hFairwayPct">—</span>
+        <span class="lbl">On Target</span>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div>
+      <div class="section-label">Log a Shot</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="input-group">
+          <label>Club</label>
+          <select id="clubSelect">
+            <option>Driver</option>
+            <option>3-Wood</option>
+            <option>5-Wood</option>
+            <option>4-Iron</option>
+            <option>5-Iron</option>
+            <option>6-Iron</option>
+            <option>7-Iron</option>
+            <option>8-Iron</option>
+            <option>9-Iron</option>
+            <option>PW</option>
+            <option>GW</option>
+            <option>SW</option>
+            <option>LW</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Carry Distance (yds)</label>
+          <input type="number" id="distInput" placeholder="e.g. 165" min="0" max="400">
+        </div>
+        <div class="input-group">
+          <label>Miss Direction</label>
+          <div class="miss-grid">
+            <button class="miss-btn" data-miss="Far Left" onclick="selectMiss(this)">Far L</button>
+            <button class="miss-btn active" data-miss="Center" onclick="selectMiss(this)">Center</button>
+            <button class="miss-btn" data-miss="Far Right" onclick="selectMiss(this)">Far R</button>
+            <button class="miss-btn" data-miss="Left" onclick="selectMiss(this)">Left</button>
+            <button class="miss-btn" data-miss="Short" onclick="selectMiss(this)">Short</button>
+            <button class="miss-btn" data-miss="Right" onclick="selectMiss(this)">Right</button>
+            <button class="miss-btn" data-miss="Long Left" onclick="selectMiss(this)">Long L</button>
+            <button class="miss-btn" data-miss="Long" onclick="selectMiss(this)">Long</button>
+            <button class="miss-btn" data-miss="Long Right" onclick="selectMiss(this)">Long R</button>
+          </div>
+        </div>
+        <button class="add-btn" onclick="addShot()">+ Log Shot</button>
+        <button class="clear-btn" onclick="clearAll()">Clear All Shots</button>
+      </div>
+    </div>
+
+```
+<div>
+  <div class="section-label">Shot Log</div>
+  <div class="shot-log" id="shotLog">
+    <div style="color: var(--muted); font-size:11px; text-align:center; padding: 20px 0;">No shots yet</div>
+  </div>
+</div>
+```
+
+  </aside>
+
+  <main class="canvas-area">
+    <canvas id="dispersionCanvas"></canvas>
+
+```
+<div class="empty-state" id="emptyState">
+  <div class="empty-icon">⛳</div>
+  <p>Log shots to see your pattern</p>
+</div>
+
+<div class="stats-overlay" id="statsOverlay" style="display:none;">
+  <div class="stat-card">
+    <div class="label">Avg Carry</div>
+    <div class="value"><span id="avgCarry">—</span><span class="unit">yds</span></div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Dispersion Width</div>
+    <div class="value"><span id="dispWidth">—</span><span class="unit">yds</span></div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Miss Tendency</div>
+    <div class="value" style="font-size:15px; padding-top:2px;" id="missTendency">—</div>
+  </div>
+</div>
+
+<div class="filter-bar" id="filterBar" style="display:none;">
+  <button class="filter-chip active" data-club="All" onclick="setFilter(this)">All</button>
+</div>
+```
+
+  </main>
+</div>
+
+<script>
+  let shots = [];
+  let selectedMiss = 'Center';
+  let filterClub = 'All';
+
+  const MISS_OFFSETS = {
+    'Far Left':   { dx: -2.2, dy: 0.0 },
+    'Left':       { dx: -1.1, dy: 0.0 },
+    'Center':     { dx: 0.0,  dy: 0.0 },
+    'Right':      { dx: 1.1,  dy: 0.0 },
+    'Far Right':  { dx: 2.2,  dy: 0.0 },
+    'Short':      { dx: 0.0,  dy: 1.5 },
+    'Long':       { dx: 0.0,  dy: -1.5 },
+    'Long Left':  { dx: -1.4, dy: -1.2 },
+    'Long Right': { dx: 1.4,  dy: -1.2 },
+  };
+
+  const CLUB_COLORS = {
+    'Driver': '#e8c84a',
+    '3-Wood': '#6ec6e8',
+    '5-Wood': '#82d4f0',
+    '4-Iron': '#e87a4a',
+    '5-Iron': '#e89a6a',
+    '6-Iron': '#d4a86a',
+    '7-Iron': '#a8d46e',
+    '8-Iron': '#7ac68a',
+    '9-Iron': '#5ab870',
+    'PW': '#c86ee8',
+    'GW': '#b05ad4',
+    'SW': '#e86ea8',
+    'LW': '#e8a0c8',
+  };
+
+  function selectMiss(btn) {
+    document.querySelectorAll('.miss-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMiss = btn.dataset.miss;
+  }
+
+  function addShot() {
+    const club = document.getElementById('clubSelect').value;
+    const dist = parseFloat(document.getElementById('distInput').value);
+    if (!dist || dist <= 0) {
+      document.getElementById('distInput').style.borderColor = '#d94f3a';
+      setTimeout(() => document.getElementById('distInput').style.borderColor = '', 1200);
+      return;
+    }
+
+    const jitter = (v) => v + (Math.random() - 0.5) * 0.5;
+    const base = MISS_OFFSETS[selectedMiss] || { dx: 0, dy: 0 };
+
+    shots.push({
+      id: Date.now(),
+      club,
+      dist,
+      miss: selectedMiss,
+      dx: jitter(base.dx),
+      dy: jitter(base.dy),
+      color: CLUB_COLORS[club] || '#e8c84a',
+    });
+
+    document.getElementById('distInput').value = '';
+    updateAll();
+  }
+
+  function removeShot(id) {
+    shots = shots.filter(s => s.id !== id);
+    updateAll();
+  }
+
+  function clearAll() {
+    if (shots.length === 0) return;
+    shots = [];
+    filterClub = 'All';
+    updateAll();
+  }
+
+  function setFilter(btn) {
+    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterClub = btn.dataset.club;
+    drawCanvas();
+    updateStats();
+  }
+
+  function getFiltered() {
+    return filterClub === 'All' ? shots : shots.filter(s => s.club === filterClub);
+  }
+
+  function updateAll() {
+    updateShotLog();
+    updateFilterBar();
+    drawCanvas();
+    updateStats();
+    updateHeaderStats();
+  }
+
+  function updateShotLog() {
+    const log = document.getElementById('shotLog');
+    if (shots.length === 0) {
+      log.innerHTML = '<div style="color: var(--muted); font-size:11px; text-align:center; padding: 20px 0;">No shots yet</div>';
+      return;
+    }
+    log.innerHTML = [...shots].reverse().map(s => `
+      <div class="shot-item">
+        <div class="shot-dot" style="background:${s.color}"></div>
+        <div class="shot-info">
+          <div class="shot-club">${s.club}</div>
+          <div class="shot-detail">${s.dist} yds &middot; ${s.miss}</div>
+        </div>
+        <button class="shot-remove" onclick="removeShot(${s.id})">×</button>
+      </div>
+    `).join('');
+  }
+
+  function updateFilterBar() {
+    const bar = document.getElementById('filterBar');
+    if (shots.length === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+
+    const clubs = ['All', ...new Set(shots.map(s => s.club))];
+    bar.innerHTML = clubs.map(c => `
+      <button class="filter-chip ${filterClub === c ? 'active' : ''}" data-club="${c}" onclick="setFilter(this)">${c}</button>
+    `).join('');
+  }
+
+  function updateStats() {
+    const filtered = getFiltered();
+    const overlay = document.getElementById('statsOverlay');
+    if (filtered.length === 0) { overlay.style.display = 'none'; return; }
+    overlay.style.display = 'flex';
+
+    const avgD = filtered.reduce((s, x) => s + x.dist, 0) / filtered.length;
+    document.getElementById('avgCarry').textContent = Math.round(avgD);
+
+    const dxVals = filtered.map(s => s.dx);
+    const spread = Math.max(...dxVals) - Math.min(...dxVals);
+    document.getElementById('dispWidth').textContent = Math.round(spread * 14);
+
+    const missCount = {};
+    filtered.forEach(s => {
+      const side = s.dx < -0.3 ? 'Left' : s.dx > 0.3 ? 'Right' : 'Straight';
+      missCount[side] = (missCount[side] || 0) + 1;
+    });
+    const top = Object.entries(missCount).sort((a,b) => b[1]-a[1])[0];
+    document.getElementById('missTendency').textContent = top ? top[0] : '—';
+  }
+
+  function updateHeaderStats() {
+    document.getElementById('hShotCount').textContent = shots.length;
+    if (shots.length === 0) {
+      document.getElementById('hAvgDist').textContent = '—';
+      document.getElementById('hFairwayPct').textContent = '—';
+      return;
+    }
+    const avg = shots.reduce((s, x) => s + x.dist, 0) / shots.length;
+    document.getElementById('hAvgDist').textContent = Math.round(avg);
+    const onTarget = shots.filter(s => Math.abs(s.dx) < 0.6).length;
+    document.getElementById('hFairwayPct').textContent = Math.round(onTarget / shots.length * 100) + '%';
+  }
+
+  /* ============ CANVAS DRAWING ============ */
+
+  function drawCanvas() {
+    const canvas = document.getElementById('dispersionCanvas');
+    const parent = canvas.parentElement;
+    const W = parent.clientWidth;
+    const H = parent.clientHeight;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    const filtered = getFiltered();
+    const empty = document.getElementById('emptyState');
+    empty.style.display = filtered.length === 0 ? 'block' : 'none';
+
+    // Target distance for scaling
+    const targetDist = filtered.length > 0
+      ? filtered.reduce((s, x) => s + x.dist, 0) / filtered.length
+      : 150;
+
+    const CX = W / 2;
+    const CY = H * 0.88;
+    const scale = Math.min(H * 0.75, W * 0.55) / (targetDist * 1.15);
+
+    // Draw fairway
+    drawFairway(ctx, CX, CY, scale, targetDist, W, H);
+
+    if (filtered.length === 0) return;
+
+    // Draw ellipse of dispersion
+    drawDispersionEllipse(ctx, filtered, CX, CY, scale);
+
+    // Draw shots
+    filtered.forEach((s, i) => {
+      const x = CX + s.dx * scale * 16;
+      const y = CY - s.dist * scale;
+      drawShot(ctx, x, y, s.color, i);
+    });
+  }
+
+  function drawFairway(ctx, CX, CY, scale, targetDist, W, H) {
+    // Rough background (already handled by CSS)
+    // Fairway corridor
+    const fwWidth = 55 * scale;
+    const fwLength = targetDist * scale * 1.8;
+
+    ctx.save();
+    // Fairway gradient
+    const fwGrad = ctx.createLinearGradient(CX, CY, CX, CY - fwLength);
+    fwGrad.addColorStop(0, '#2d6820');
+    fwGrad.addColorStop(0.5, '#306e22');
+    fwGrad.addColorStop(1, '#2a6018');
+    ctx.fillStyle = fwGrad;
+
+    // Fairway shape (narrows toward target)
+    ctx.beginPath();
+    ctx.moveTo(CX - fwWidth * 0.85, CY);
+    ctx.bezierCurveTo(
+      CX - fwWidth, CY - fwLength * 0.4,
+      CX - fwWidth * 0.6, CY - fwLength * 0.75,
+      CX - fwWidth * 0.5, CY - fwLength
+    );
+    ctx.lineTo(CX + fwWidth * 0.5, CY - fwLength);
+    ctx.bezierCurveTo(
+      CX + fwWidth * 0.6, CY - fwLength * 0.75,
+      CX + fwWidth, CY - fwLength * 0.4,
+      CX + fwWidth * 0.85, CY
+    );
+    ctx.closePath();
+    ctx.fill();
+
+    // Fairway stripe texture
+    for (let i = 0; i < 5; i++) {
+      const yPos = CY - (i + 0.5) * (fwLength / 5);
+      ctx.save();
+      ctx.globalAlpha = 0.07;
+      ctx.fillStyle = i % 2 === 0 ? '#000' : '#fff';
+      ctx.fillRect(CX - fwWidth * 0.9, yPos - fwLength / 10, fwWidth * 1.8, fwLength / 10);
+      ctx.restore();
+    }
+
+    // Green
+    const greenR = 42 * scale;
+    const greenX = CX;
+    const greenY = CY - targetDist * scale;
+    const gGrad = ctx.createRadialGradient(greenX, greenY, 0, greenX, greenY, greenR);
+    gGrad.addColorStop(0, '#4a9e3a');
+    gGrad.addColorStop(0.7, '#3d8a2e');
+    gGrad.addColorStop(1, '#326024');
+    ctx.beginPath();
+    ctx.ellipse(greenX, greenY, greenR * 1.3, greenR, 0, 0, Math.PI * 2);
+    ctx.fillStyle = gGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Flag
+    ctx.beginPath();
+    ctx.moveTo(greenX + 4, greenY - greenR * 0.3);
+    ctx.lineTo(greenX + 4, greenY - greenR * 0.3 - 28);
+    ctx.strokeStyle = '#c8c8c8';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#d94f3a';
+    ctx.beginPath();
+    ctx.moveTo(greenX + 4, greenY - greenR * 0.3 - 28);
+    ctx.lineTo(greenX + 18, greenY - greenR * 0.3 - 21);
+    ctx.lineTo(greenX + 4, greenY - greenR * 0.3 - 14);
+    ctx.fill();
+
+    // Yardage markers
+    const markerDists = [50, 100, 150, 200, 250, 300].filter(d => d < targetDist * 1.6);
+    ctx.font = '9px DM Mono, monospace';
+    ctx.textAlign = 'right';
+    markerDists.forEach(d => {
+      const my = CY - d * scale;
+      if (my < 20 || my > H - 10) return;
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath();
+      ctx.moveTo(CX - fwWidth * 1.1, my);
+      ctx.lineTo(CX + fwWidth * 1.1, my);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillText(d + 'y', CX - fwWidth * 1.15, my + 3);
+    });
+
+    ctx.restore();
+  }
+
+  function drawDispersionEllipse(ctx, shots, CX, CY, scale) {
+    if (shots.length < 2) return;
+    const dxVals = shots.map(s => s.dx * scale * 16);
+    const dyVals = shots.map(s => s.dist * scale);
+    const dxRange = Math.max(...dxVals) - Math.min(...dxVals);
+    const dyRange = Math.max(...dyVals) - Math.min(...dyVals);
+    const cx = CX + dxVals.reduce((a, b) => a + b, 0) / dxVals.length;
+    const cy = CY - dyVals.reduce((a, b) => a + b, 0) / dyVals.length;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.max(dxRange / 2 + 18, 18), Math.max(dyRange / 2 + 18, 18), 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(232,200,74,0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(232,200,74,0.04)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawShot(ctx, x, y, color, index) {
+    ctx.save();
+    // Glow
+    const grd = ctx.createRadialGradient(x, y, 0, x, y, 10);
+    grd.addColorStop(0, color + 'aa');
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dot
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Init + resize
+  window.addEventListener('resize', () => { if (shots.length > 0) drawCanvas(); else drawCanvas(); });
+
+  // Initial draw
+  setTimeout(() => drawCanvas(), 50);
+</script>
+
+</body>
+</html>
